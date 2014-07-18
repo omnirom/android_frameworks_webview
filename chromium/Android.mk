@@ -114,7 +114,13 @@ $(jar_check_ok): $(full_classes_jarjar_jar) $(LOCAL_PATH)/tools/jar_check.py $(L
 $(LOCAL_BUILT_MODULE): $(jar_check_ok)
 endif
 
-
+# Use prebuilt android_webview_java to satisfy webviewchromium's dependency
+# if we are working with prebuilt Chromium
+ifeq ($(PRODUCT_PREBUILT_WEBVIEWCHROMIUM),yes)
+include $(CLEAR_VARS)
+LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES := android_webview_java:../../../prebuilts/chromium/$(TARGET_DEVICE)/android_webview_java.jar
+include $(BUILD_MULTI_PREBUILT)
+endif
 
 # Native support library (libwebviewchromium_plat_support.so) - does NOT link
 # any native chromium code.
