@@ -63,7 +63,7 @@ AwPixelInfo* GetPixels(JNIEnv* env, jobject java_canvas) {
   // translate & scale transforms, and a simple rectangular clip.
   // (This also avoids significant wasted time in calling
   // SkCanvasStateUtils::CaptureCanvasState when the clip is complex).
-  if (!canvas->getTotalClip().isRect() ||
+  if (!canvas->isClipRect() ||
       (canvas->getTotalMatrix().getType() &
                 ~(SkMatrix::kTranslate_Mask | SkMatrix::kScale_Mask))) {
     return NULL;
@@ -81,57 +81,31 @@ void ReleasePixels(AwPixelInfo* pixels) {
   delete static_cast<PixelInfo*>(pixels);
 }
 
-jobject CreatePicture(JNIEnv* env, SkPicture* picture) {
-  jclass clazz = env->FindClass("android/graphics/Picture");
-  jmethodID constructor = env->GetMethodID(clazz, "<init>", "(IZ)V");
-  ALOG_ASSERT(clazz);
-  ALOG_ASSERT(constructor);
-  return env->NewObject(clazz, constructor, picture, false);
+jlong GetDrawSWFunctionTable(JNIEnv* env, jclass) {
+  static AwDrawSWFunctionTable function_table;
+  function_table.version = kAwDrawSWFunctionTableVersion;
+  function_table.access_pixels = &GetPixels;
+  function_table.release_pixels = &ReleasePixels;
+  return reinterpret_cast<intptr_t>(&function_table);
 }
 
-bool IsSkiaVersionCompatible(SkiaVersionFunction function) {
-  bool compatible = false;
-  if (function && function == &SkGraphics::GetVersion) {
-    int android_major, android_minor, android_patch;
-    SkGraphics::GetVersion(&android_major, &android_minor, &android_patch);
-
-    int chromium_major, chromium_minor, chromium_patch;
-    (*function)(&chromium_major, &chromium_minor, &chromium_patch);
-
-    compatible = android_major == chromium_major &&
-                 android_minor == chromium_minor &&
-                 android_patch == chromium_patch;
-  }
-  return compatible;
-}
-
-jint GetDrawSWFunctionTable(JNIEnv* env, jclass) {
-  static const AwDrawSWFunctionTable function_table = {
-      &GetPixels,
-      &ReleasePixels,
-      &CreatePicture,
-      &IsSkiaVersionCompatible,
-  };
-  return reinterpret_cast<jint>(&function_table);
-}
-
-jint GetDrawGLFunctionTable(JNIEnv* env, jclass) {
-  static const AwDrawGLFunctionTable function_table = {
-    &GraphicBufferImpl::Create,
-    &GraphicBufferImpl::Release,
-    &GraphicBufferImpl::MapStatic,
-    &GraphicBufferImpl::UnmapStatic,
-    &GraphicBufferImpl::GetNativeBufferStatic,
-    &GraphicBufferImpl::GetStrideStatic,
-  };
-  return reinterpret_cast<jint>(&function_table);
+jlong GetDrawGLFunctionTable(JNIEnv* env, jclass) {
+  static AwDrawGLFunctionTable function_table;
+  function_table.version = kAwDrawGLFunctionTableVersion;
+  function_table.create_graphic_buffer = &GraphicBufferImpl::Create;
+  function_table.release_graphic_buffer = &GraphicBufferImpl::Release;
+  function_table.map = &GraphicBufferImpl::MapStatic;
+  function_table.unmap = &GraphicBufferImpl::UnmapStatic;
+  function_table.get_native_buffer = &GraphicBufferImpl::GetNativeBufferStatic;
+  function_table.get_stride = &GraphicBufferImpl::GetStrideStatic;
+  return reinterpret_cast<intptr_t>(&function_table);
 }
 
 const char kClassName[] = "com/android/webview/chromium/GraphicsUtils";
 const JNINativeMethod kJniMethods[] = {
-    { "nativeGetDrawSWFunctionTable", "()I",
+    { "nativeGetDrawSWFunctionTable", "()J",
         reinterpret_cast<void*>(GetDrawSWFunctionTable) },
-    { "nativeGetDrawGLFunctionTable", "()I",
+    { "nativeGetDrawGLFunctionTable", "()J",
         reinterpret_cast<void*>(GetDrawGLFunctionTable) },
 };
 
