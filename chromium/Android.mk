@@ -78,6 +78,8 @@ include $(BUILD_SHARED_LIBRARY)
 ifneq ($(PRODUCT_PREBUILT_WEBVIEWCHROMIUM),yes)
 extra_java_files :=
 include $(LOCAL_PATH)/package.mk
+else
+include $(LOCAL_PATH)/package_prebuilt.mk
 endif
 
 # Build other stuff
